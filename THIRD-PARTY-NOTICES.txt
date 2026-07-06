@@ -1,0 +1,100 @@
+THIRD-PARTY SOFTWARE NOTICES AND INFORMATION
+
+CodeBrix.Sqlite is a SQLite convenience library layered on Microsoft.Data.Sqlite
+that provides selective column/object encryption with a pluggable crypt engine,
+the typed EncryptedTable<T> abstraction with searchable encrypted data and HMAC
+blind-index equality search, safe quiesce-and-backup orchestration, and database
+schema-version helpers.
+
+CodeBrix.Sqlite incorporates source code and designs derived from the
+open-source projects listed below. The first two were authored by Jeremy Ellis
+(Ellisnet); all are licensed under the Apache License, Version 2.0 — the same
+license as this project.
+
+Jeremy Ellis and contributors license the CodeBrix.Sqlite project
+to you under the terms set forth in the LICENSE file, which is located at
+the root of this repository.
+
+If you have any questions about any third-party code or services referenced
+here, or if you believe that any third-party code has been included in
+CodeBrix.Sqlite in error, please open a new issue at:
+https://github.com/ellisnet/CodeBrix.Sqlite/issues
+
+================================================================================
+
+1. Portable.Data.Sqlite
+   https://github.com/ellisnet/Portable.Data.Sqlite (develop branch, as of
+   merge commit b4a0f40, November 2017)
+   Copyright 2014 Ellisnet - Jeremy Ellis (jeremy@ellisnet.com)
+   License: Apache License, Version 2.0
+
+   The EncryptedTable<T> subsystem in this repository is a modernized
+   derivative of the EncryptedTable folder of Portable.Data.Sqlite:
+
+   Production source (src/CodeBrix.Sqlite/EncryptedTables/):
+     - EncryptedTable.cs        (was: EncryptedTable/EncryptedTable.cs)
+     - EncryptedTableItem.cs    (was: EncryptedTable/EncryptedTableItem.cs and
+                                 EncryptedTable/IEncryptedTableItem.cs — the
+                                 separate interface was merged into the
+                                 abstract base class)
+     - ItemPropertyAttributes.cs (was: EncryptedTable/ItemPropertyAttributes.cs;
+                                 the BlindIndexedAttribute is new in this
+                                 library)
+     - TableColumn.cs           (was: EncryptedTable/TableColumn.cs)
+     - TableIndex.cs            (was: EncryptedTable/TableIndex.cs)
+     - TableSearch.cs           (was: EncryptedTable/TableSearch.cs)
+     - TableSearchItem.cs       (was: EncryptedTable/TableSearchItem.cs)
+
+   Modifications made during the port include: retargeting from the library's
+   own SQLite ADO provider to Microsoft.Data.Sqlite; migration from .NET
+   Portable Class Library / .NET Standard 1.1 targets to .NET 10; replacement
+   of Newtonsoft.Json-based serialization with a pluggable IObjectSerializer
+   (System.Text.Json by default); replacement of bare System.Exception throws
+   with typed exceptions; addition of async APIs; addition of the HMAC
+   blind-index column feature; and general API surface modernization. Files
+   derived from this project carry a "//was previously:" provenance comment
+   on their namespace line.
+
+2. SimpleAdo / SimpleAdo.Sqlite
+   https://github.com/ellisnet/SimpleAdo (master branch, as of 2018)
+   Copyright 2018 Ellisnet - Jeremy Ellis
+   License: Apache License, Version 2.0
+
+   The encrypted-column API surface of this repository (IObjectCryptEngine,
+   AddEncryptedParameter(), ExecuteDecrypt<T>(), GetDecrypted<T>(),
+   TryDecrypt<T>(), the DbNullHandling enumeration, and the maintenance-mode /
+   safe-backup orchestration concepts) is derived from the design of
+   SimpleAdo.Sqlite. The implementation in this repository was written fresh
+   against Microsoft.Data.Sqlite types rather than ported file-by-file, so no
+   individual source file is a direct copy; the attribution here records the
+   design lineage.
+
+3. Dapper
+   https://github.com/DapperLib/Dapper (tag 2.1.79, commit 72a54c4)
+   Copyright (c) Sam Saffron, Marc Gravell, Nick Craver, and Dapper
+   contributors / Stack Exchange, Inc.
+   License: Apache License, Version 2.0
+
+   The Dapper-style CRUD API of this repository (the SqliteMapper extension
+   methods: Query / Query<T> / QueryFirst / QueryFirstOrDefault / QuerySingle
+   / QuerySingleOrDefault / Execute / ExecuteScalar / ExecuteReader /
+   QueryMultiple and their async forms, plus the grid-reader concept,
+   anonymous-object parameters, unreferenced-parameter filtering, and IN-list
+   expansion) is modeled on the public API surface and observable behavior of
+   Dapper 2.1.79. The implementation in this repository was written fresh and
+   SQLite-specific (reflection-based materialization against
+   Microsoft.Data.Sqlite types, with CodeBrix.Sqlite encryption hooks) rather
+   than ported file-by-file from Dapper's provider-agnostic IL-emit engine,
+   so no individual source file is a copy; the attribution here records the
+   API-design lineage.
+
+--------------------------------------------------------------------------------
+
+Apache License text: all upstream projects listed above are licensed under the Apache
+License, Version 2.0, which is the same license as this repository. The full
+license text is reproduced in the LICENSE file at the root of this repository
+and applies to the incorporated code identically.
+
+================================================================================
+
+END OF THIRD-PARTY SOFTWARE NOTICES AND INFORMATION
