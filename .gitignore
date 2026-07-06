@@ -420,3 +420,4 @@ FodyWeavers.xsd
 # Per-run render output written by the resvg / W3C SVG comparison tests
 # (the "<name> (Actual).png" scratch images they diff against the references)
 tests/Tests/*(Actual).png
+.idea/*
