@@ -374,6 +374,17 @@ public static partial class SqliteMapper
         return rows;
     }
 
+    /// <summary>
+    /// Materializes the reader's current row as <typeparamref name="T"/>, dispatching on the target
+    /// type: an <see cref="EncryptedTableItem"/> is decrypted from the row's Encrypted_Object column,
+    /// a simple type takes the first column's value, and anything else is built as a POCO whose
+    /// writable properties are matched to column names case-insensitively and ignoring underscores.
+    /// </summary>
+    /// <typeparam name="T">The type to materialize the row as.</typeparam>
+    /// <param name="reader">The reader, positioned on the row to materialize.</param>
+    /// <param name="engine">The crypt engine for decrypting encrypted results; may be null when the
+    /// row and target type involve no encryption.</param>
+    /// <returns>The materialized row.</returns>
     internal static T MaterializeRow<T>(SqliteDataReader reader, IObjectCryptEngine engine)
     {
         Type type = typeof(T);

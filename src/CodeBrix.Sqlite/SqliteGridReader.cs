@@ -20,6 +20,15 @@ public sealed class SqliteGridReader : IDisposable
     private bool _isConsumed;
     private bool _disposed;
 
+    /// <summary>
+    /// Creates a grid reader over the result sets of an executed multi-statement command. Instances
+    /// are produced by <see cref="SqliteMapper.QueryMultiple"/> rather than constructed directly.
+    /// </summary>
+    /// <param name="command">The executed command; disposed with this reader.</param>
+    /// <param name="reader">The open data reader positioned on the first result set.</param>
+    /// <param name="cryptEngine">The crypt engine used to materialize encrypted results; may be null.</param>
+    /// <param name="connectionToClose">The connection to close on disposal when this call opened it;
+    /// null when the connection was already open and should be left open.</param>
     internal SqliteGridReader(SqliteCommand command, SqliteDataReader reader, IObjectCryptEngine cryptEngine, SqliteConnection connectionToClose)
     {
         _command = command;

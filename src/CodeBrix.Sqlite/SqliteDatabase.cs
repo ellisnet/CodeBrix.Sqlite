@@ -39,8 +39,13 @@ public class SqliteDatabase : IDisposable
     public string DatabaseFilePath => _databaseFilePath;
 
     /// <summary>
-    /// The underlying Microsoft.Data.Sqlite connection. Operations executed directly against this
-    /// connection bypass the maintenance-mode gate; prefer the methods on this class.
+    /// The underlying Microsoft.Data.Sqlite connection, and the bridge to the Dapper-style CRUD
+    /// methods of <see cref="SqliteMapper"/>, which are extension methods on
+    /// <see cref="SqliteConnection"/>: call them as <c>database.Connection.Query&lt;T&gt;(...)</c>.
+    /// Those methods honor the maintenance-mode gate and resolve this database's crypt engine
+    /// ambiently. Raw ADO.NET operations issued directly against this connection - a command built
+    /// by hand, or <see cref="SqliteConnection.BeginTransaction()"/> - bypass the maintenance-mode
+    /// gate; where this class offers an equivalent method, prefer it.
     /// </summary>
     public SqliteConnection Connection => _connection;
 
@@ -99,6 +104,14 @@ public class SqliteDatabase : IDisposable
         AmbientDatabases.Add(_connection, this);
     }
 
+    /// <summary>
+    /// Looks up the <see cref="SqliteDatabase"/> that owns the specified connection. This is how the
+    /// Dapper-style mapper methods resolve a crypt engine (and the maintenance-mode gate) ambiently
+    /// when the caller does not pass one explicitly.
+    /// </summary>
+    /// <param name="connection">The connection to find the owning database for.</param>
+    /// <param name="database">When this method returns true, the owning database; otherwise null.</param>
+    /// <returns>True when the connection belongs to a live <see cref="SqliteDatabase"/>; otherwise false.</returns>
     internal static bool TryGetAmbientDatabase(SqliteConnection connection, out SqliteDatabase database)
         => AmbientDatabases.TryGetValue(connection, out database);
 

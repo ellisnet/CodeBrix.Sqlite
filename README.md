@@ -1,7 +1,7 @@
 # CodeBrix.Sqlite
 
-A fully managed, cross-platform SQLite convenience library for .NET, layered on top of `Microsoft.Data.Sqlite`. CodeBrix.Sqlite provides selective column and object encryption with a pluggable crypt engine (including a ready-to-use AES-GCM engine), the typed `EncryptedTable<T>` abstraction with searchable encrypted data and HMAC blind-index equality search, safe quiesce-and-backup orchestration for live databases, and database schema-version helpers.
-CodeBrix.Sqlite has a single dependency — `Microsoft.Data.Sqlite` — and is provided as a .NET 10 library and associated `CodeBrix.Sqlite.ApacheLicenseForever` NuGet package.
+A fully managed, cross-platform SQLite convenience library for .NET, layered on top of `Microsoft.Data.Sqlite`. At its simplest it is a convenience layer: modern pragma defaults, a Dapper-style mapper, and safe backups. Beyond that it provides selective column and object encryption with a pluggable crypt engine (including a ready-to-use AES-GCM engine), the typed `EncryptedTable<T>` abstraction with searchable encrypted data and HMAC blind-index equality search, safe quiesce-and-backup orchestration for live databases, and database schema-version helpers. **The encryption features are entirely optional** — see the plain sample below.
+CodeBrix.Sqlite depends only on `Microsoft.Data.Sqlite` and its own version pin of that package's `SQLitePCLRaw` native bundle, and is provided as a .NET 10 library and associated `CodeBrix.Sqlite.ApacheLicenseForever` NuGet package.
 
 CodeBrix.Sqlite supports applications and assemblies that target Microsoft .NET version 10.0 and later.
 Microsoft .NET version 10.0 is a Long-Term Supported (LTS) version of .NET, and was released on Nov 11, 2025; and will be actively supported by Microsoft until Nov 14, 2028.
@@ -18,8 +18,49 @@ Please update your C#/.NET code and projects to the latest LTS version of Micros
 * Database maintenance mode, blocking normal operations while backups or schema changes run
 * `user_version` schema-version helpers for managing database DDL upgrades over time
 * Dapper-style CRUD extension methods on `SqliteConnection` — `Query<T>()`, `QueryFirst/Single(OrDefault)()`, `Execute()`, `ExecuteScalar<T>()`, `ExecuteReader()`, `QueryMultiple()` and their async forms, with anonymous-object parameters and IN-list expansion (API modeled on Dapper 2.1.79) — that are encryption-aware: `EncryptedTableItem` results decrypt automatically, `[EncryptedColumn]` POCO properties decrypt on read, and `EncryptedValue`-wrapped parameters encrypt on bind
+* Column binding that is case-insensitive **and underscore-tolerant**, so a `snake_case` schema maps onto PascalCase properties (`customer_tier` → `CustomerTier`) with no aliases, attributes or configuration — and, unlike stock Dapper, with no `MatchNamesWithUnderscores` switch to remember
+* A SQLite dependency graph with no known security advisories — see below
+
+## Every feature is optional — including encryption
+
+The encryption features are what make this library different, but none of them are mandatory. The `cryptEngine` constructor argument is optional; omit it and CodeBrix.Sqlite is simply a convenience layer over `Microsoft.Data.Sqlite` — sensible pragmas, a Dapper-style mapper, and backup orchestration. You can adopt it for the plain case in two minutes and discover the encryption features later, without rewriting anything you wrote first.
+
+## A clean SQLite dependency graph
+
+A direct `Microsoft.Data.Sqlite` reference can resolve `SQLitePCLRaw.lib.e_sqlite3` 2.1.11, which carries a high-severity advisory (NU1903 / GHSA-2m69-gcr7-jv3q) and obliges the consuming project to add an explicit transitive pin to get a clean build.
+
+CodeBrix.Sqlite pins `SQLitePCLRaw.bundle_e_sqlite3` to 3.0.3 on your behalf — deliberately, not incidentally — so referencing this package resolves a graph that `dotnet list package --vulnerable --include-transitive` reports as clean, with no pin and no explanatory comment needed in your own project file.
 
 ## Sample Code
+
+### The plain case: no encryption at all
+
+```csharp
+using CodeBrix.Sqlite;
+
+using var db = new SqliteDatabase("app.db");
+db.SafeOpen(); // creates the file if missing; opens only if not already open
+db.ExecuteNonQuery(
+    "CREATE TABLE IF NOT EXISTS tickets (id INTEGER PRIMARY KEY, title TEXT, customer_tier TEXT);");
+
+// The Dapper-style methods are extension methods on SqliteConnection,
+// so they are reached through the Connection property:
+db.Connection.Execute(
+    "INSERT INTO tickets (title, customer_tier) VALUES (@Title, @CustomerTier);",
+    new { Title = "Investigate timeout", CustomerTier = "gold" });
+
+// 'customer_tier' binds to 'CustomerTier' with no alias and no attribute:
+List<Ticket> tickets = db.Connection
+    .Query<Ticket>("SELECT id, title, customer_tier FROM tickets ORDER BY id")
+    .ToList();
+
+public class Ticket
+{
+    public long Id { get; set; }
+    public string Title { get; set; }
+    public string CustomerTier { get; set; }
+}
+```
 
 ### Encrypting column values and backing up a live database
 

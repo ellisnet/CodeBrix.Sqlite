@@ -30,9 +30,42 @@ IMPORTANT: The root namespace is CodeBrix.Sqlite (WITHOUT the
 ".ApacheLicenseForever" suffix - that suffix appears only in the NuGet
 package id, to make the package's license obvious forever).
 
-Target framework: .NET 10.0 or higher. The library's only dependency is
+Target framework: .NET 10.0 or higher. The library depends only on
 Microsoft.Data.Sqlite (which bundles the native SQLite engine via
-SQLitePCLRaw).
+SQLitePCLRaw) plus an explicit version pin of that engine bundle - see the
+dependency note below.
+
+DEPENDENCY NOTE: the library pins SQLitePCLRaw.bundle_e_sqlite3 to 3.0.3
+explicitly, rather than accepting the 2.1.x bundle that Microsoft.Data.Sqlite
+would otherwise pull in. The 2.1.11 lib.e_sqlite3 native package carries a
+high-severity advisory (NU1903 / GHSA-2m69-gcr7-jv3q); the patched native
+library ships in the 3.x bundles. Referencing CodeBrix.Sqlite therefore gives
+a SQLite dependency graph that "dotnet list package --vulnerable
+--include-transitive" reports clean, with no pin needed in the consuming
+project. Do not remove that PackageReference from the csproj to "simplify"
+the dependencies - it is load-bearing.
+
+QUICK START (no encryption)
+------------------------------------------------------------------------
+Encryption is entirely optional: the cryptEngine constructor argument
+defaults to null, and everything below works without one. The plain
+"convenience layer over Microsoft.Data.Sqlite" case is five lines.
+
+    using CodeBrix.Sqlite;
+
+    using var db = new SqliteDatabase("app.db");
+    db.SafeOpen();  // creates the file if missing; WAL + foreign keys on
+    db.ExecuteNonQuery(
+        "CREATE TABLE IF NOT EXISTS tickets (id INTEGER PRIMARY KEY, title TEXT);");
+
+    //Dapper-style CRUD hangs off the Connection property - see below:
+    db.Connection.Execute("INSERT INTO tickets (title) VALUES (@Title);",
+        new { Title = "Investigate timeout" });
+    List<Ticket> rows = db.Connection
+        .Query<Ticket>("SELECT id, title FROM tickets ORDER BY id").ToList();
+
+Add a crypt engine later - new SqliteDatabase(path, cryptEngine) - and the
+encryption features light up without changing any of the above.
 
 KEY NAMESPACE
 ------------------------------------------------------------------------
@@ -50,7 +83,24 @@ CORE API REFERENCE
 ------------------------------------------------------------------------
 SqliteDatabase (entry point; IDisposable)
   - new SqliteDatabase(path, cryptEngine = null, options = null)
+      cryptEngine is OPTIONAL - omit it entirely if you do not need
+      encryption (see QUICK START above).
+  - Connection -> SqliteConnection
+      THE BRIDGE TO THE MAPPER. The Dapper-style CRUD methods below are
+      extension methods on SqliteConnection, not members of this class,
+      so every mapper call is written database.Connection.Query<T>(...),
+      database.Connection.Execute(...), and so on. Those calls still
+      honor the maintenance-mode gate and pick up this database's crypt
+      engine ambiently. Raw ADO.NET work issued directly against the
+      connection (a hand-built command, BeginTransaction()) does NOT
+      pass through the maintenance-mode gate; prefer the methods on
+      SqliteDatabase where an equivalent exists.
   - Open() / OpenAsync() / SafeOpen() / SafeOpenAsync() / Close()
+      Open() assumes a CLOSED connection and throws if it is already
+      open; SafeOpen() is the idempotent form, opening only when the
+      connection is not already open. SafeOpen()/SafeOpenAsync() are
+      what per-request or per-command code wants; reach for Open() only
+      when you control the lifecycle and know the connection is closed.
       Opening applies the configured pragmas: WAL journal mode and
       foreign-key enforcement are ON by default (SqliteDatabaseOptions).
       SqliteDatabaseOptions also has: CreateIfMissing (default true - the
@@ -125,7 +175,9 @@ EncryptedTable<T> (T : EncryptedTableItem, new())
 
 Dapper-style CRUD (SqliteMapper - namespace CodeBrix.Sqlite)
   Extension methods on SqliteConnection modeled on the Dapper 2.1.79 API
-  surface ("using CodeBrix.Sqlite;" instead of "using Dapper;"):
+  surface ("using CodeBrix.Sqlite;" instead of "using Dapper;"). Because
+  they extend SqliteConnection, you call them through the Connection
+  property of SqliteDatabase: database.Connection.Query<T>(sql, param).
   - Query<T>() / Query() dynamic / QueryFirst<T>() / QueryFirstOrDefault<T>()
     / QuerySingle<T>() / QuerySingleOrDefault<T>()
   - Execute() / ExecuteScalar<T>() / ExecuteReader() / QueryMultiple()
@@ -136,6 +188,24 @@ Dapper-style CRUD (SqliteMapper - namespace CodeBrix.Sqlite)
   values expand for IN clauses ("WHERE Id IN @ids"); an empty list matches
   no rows. Connections that were closed are opened for the call and closed
   after it (readers/grids close on disposal).
+  COLUMN BINDING: result columns bind to writable public properties
+  case-insensitively AND ignoring underscores (both sides are normalized by
+  stripping '_' and lowercasing). A snake_case schema therefore maps onto
+  PascalCase properties with no aliases, no attributes and no configuration:
+  customer_tier -> CustomerTier, has_mitigation -> HasMitigation. Unlike
+  stock Dapper, this needs no MatchNamesWithUnderscores switch - do not go
+  looking for one, and do not write "SELECT customer_tier AS CustomerTier"
+  aliases, which are unnecessary here. Columns with no matching property are
+  ignored, and a column that is NULL leaves its property at the type's
+  default value rather than failing.
+  TYPE COERCION: values are converted with the usual .NET conversions
+  (Convert.ChangeType under InvariantCulture), with special handling for
+  enums (from a numeric value or a case-insensitive name), Guid (from string
+  or a 16-byte blob), DateTime, DateTimeOffset, TimeSpan and char. Because
+  SQLite has no boolean type, an INTEGER 0/1 column binds correctly to a
+  bool property, and a bool parameter stores as 0/1 - both directions work
+  with no configuration. ExecuteScalar<T>() applies the same conversions, so
+  "SELECT last_insert_rowid()" reads cleanly as ExecuteScalar<long>().
   ENCRYPTION-AWARE: result types deriving from EncryptedTableItem are
   materialized by decrypting the row's Encrypted_Object column (the result
   set must include it - SELECT * works; Id is picked up when present);
@@ -180,9 +250,15 @@ COMMON PITFALLS
 - BackupToFile() OVERWRITES an existing destination file;
   SnapshotToFile() (VACUUM INTO) REFUSES one and throws IOException.
 - POCO materialization in the Dapper-style methods needs a public
-  parameterless constructor; [NotNull] columns are not satisfied by
-  [ColumnDefaultValue] on inserts (the INSERT lists every column
-  explicitly), so give NOT NULL properties real values.
+  parameterless constructor. C# 'required' members are FINE despite that:
+  Query<T> and friends carry no "where T : new()" constraint (a type with
+  required members could not satisfy one) and materialize reflectively via
+  Activator.CreateInstance, which legitimately bypasses what is a
+  compile-time contract. Do not strip 'required' from your models
+  defensively - rows round-trip into it correctly.
+- [NotNull] columns are not satisfied by [ColumnDefaultValue] on inserts
+  (the INSERT lists every column explicitly), so give NOT NULL properties
+  real values.
 - Two builds in the same UTC minute produce the SAME package version
   (date-stamped versioning) - do not publish two packages from one minute.
 

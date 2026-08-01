@@ -31,6 +31,16 @@ public class SqliteMapperTests : IDisposable
         public string NotInTable { get; set; }
     }
 
+    //A POCO whose members are all 'required'. Such a type can never satisfy a "where T : new()"
+    //generic constraint, so it verifies that the mapper's reflective materialization is not
+    //blocked by what is only a compile-time contract.
+    public class RequiredPerson
+    {
+        public required long Id { get; set; }
+        public required string FullName { get; set; }
+        public required bool IsActive { get; set; }
+    }
+
     private static readonly Guid AdaGuid = Guid.Parse("11111111-2222-3333-4444-555555555555");
 
     private readonly TempFolder _folder = new TempFolder();
@@ -95,6 +105,40 @@ public class SqliteMapperTests : IDisposable
         ada.OptionalNumber.Should().BeNull();
         ada.NotInTable.Should().BeNull(); //no matching column - stays default
         people[1].OptionalNumber.Should().Be(7);
+        people[1].IsActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Required_members_round_trip_through_the_mapper()
+    {
+        //Arrange
+        var katherine = new RequiredPerson { Id = 0, FullName = "Katherine Johnson", IsActive = true };
+
+        //Act
+        _connection.Execute(
+            "INSERT INTO [People] ([full_name], [IsActive]) VALUES (@FullName, @IsActive);", katherine);
+        RequiredPerson roundTripped = _connection.QuerySingle<RequiredPerson>(
+            "SELECT [Id], [full_name], [IsActive] FROM [People] WHERE [full_name] = @FullName;", katherine);
+
+        //Assert
+        roundTripped.Id.Should().BeGreaterThan(0); //assigned by AUTOINCREMENT, not by the caller
+        roundTripped.FullName.Should().Be("Katherine Johnson");
+        roundTripped.IsActive.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task QueryAsync_materializes_a_type_with_required_members()
+    {
+        //Arrange + Act
+        List<RequiredPerson> people = (await _connection.QueryAsync<RequiredPerson>(
+                "SELECT [Id], [full_name], [IsActive] FROM [People] ORDER BY [Id];",
+                cancellationToken: TestContext.Current.CancellationToken))
+            .ToList();
+
+        //Assert
+        people.Count.Should().Be(2);
+        people[0].FullName.Should().Be("Ada Lovelace");
+        people[0].IsActive.Should().BeTrue();
         people[1].IsActive.Should().BeFalse();
     }
 
