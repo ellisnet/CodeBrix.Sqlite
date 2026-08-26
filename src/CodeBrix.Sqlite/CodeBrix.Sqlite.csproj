@@ -75,10 +75,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
-    <!-- Explicit bump of the transitive SQLitePCLRaw packages: Microsoft.Data.Sqlite 10.0.9
-         pins bundle_e_sqlite3 2.1.11, whose lib.e_sqlite3 has a known vulnerability (NU1903 /
-         GHSA-2m69-gcr7-jv3q); the patched native library ships in the 3.x bundles. -->
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.11" />
+    <!-- Explicit bump of the transitive SQLitePCLRaw packages to the 3.x native bundle.
+         This began as a vulnerability fix: Microsoft.Data.Sqlite through 10.0.10 pinned
+         bundle_e_sqlite3 2.1.11, whose lib.e_sqlite3 has a known vulnerability (NU1903 /
+         GHSA-2m69-gcr7-jv3q). As of Microsoft.Data.Sqlite 10.0.11 the transitive pin is
+         2.1.12, which is NOT flagged, so this reference no longer avoids an advisory; it
+         keeps the graph on the current 3.x bundle. Re-check before removing it. -->
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
   </ItemGroup>
 

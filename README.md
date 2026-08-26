@@ -7,6 +7,19 @@ CodeBrix.Sqlite supports applications and assemblies that target Microsoft .NET 
 Microsoft .NET version 10.0 is a Long-Term Supported (LTS) version of .NET, and was released on Nov 11, 2025; and will be actively supported by Microsoft until Nov 14, 2028.
 Please update your C#/.NET code and projects to the latest LTS version of Microsoft .NET.
 
+## Installation
+
+```
+dotnet add package CodeBrix.Sqlite.ApacheLicenseForever
+```
+
+Note that the NuGet package ID and the namespace are different - there is no package named plain `CodeBrix.Sqlite`:
+
+* NuGet package ID: `CodeBrix.Sqlite.ApacheLicenseForever`
+* Assembly and root namespace: `CodeBrix.Sqlite` - i.e. `using CodeBrix.Sqlite;`
+
+XML documentation (IntelliSense) ships alongside the assembly.
+
 ## CodeBrix.Sqlite supports:
 
 * Opening SQLite databases with sensible modern defaults — WAL journaling and enforced foreign keys — via the `SqliteDatabase` entry-point class (sync and async APIs throughout)
@@ -25,11 +38,20 @@ Please update your C#/.NET code and projects to the latest LTS version of Micros
 
 The encryption features are what make this library different, but none of them are mandatory. The `cryptEngine` constructor argument is optional; omit it and CodeBrix.Sqlite is simply a convenience layer over `Microsoft.Data.Sqlite` — sensible pragmas, a Dapper-style mapper, and backup orchestration. You can adopt it for the plain case in two minutes and discover the encryption features later, without rewriting anything you wrote first.
 
+## What the encryption does and does not cover
+
+This is **selective column and object encryption on top of a normal SQLite file - it is not SQLCipher and not full-database (page-level) encryption**. The database file, its schema, its table and column names, and every column you did not encrypt remain readable by any SQLite tool. Encrypt the values that need protecting, and treat the file itself as unprotected.
+
+Two further limits worth knowing before you design around it:
+
+* Encrypted columns are opaque to SQLite, so there are no range, ordering or `LIKE` queries over them in SQL. Searching happens either through the in-memory searchable index (which decrypts a projection of every row) or through blind-index **exact equality**.
+* Key management is out of scope: key derivation is PBKDF2/HKDF as described above, and there is no key storage, rotation or escrow.
+
 ## A clean SQLite dependency graph
 
-A direct `Microsoft.Data.Sqlite` reference can resolve `SQLitePCLRaw.lib.e_sqlite3` 2.1.11, which carries a high-severity advisory (NU1903 / GHSA-2m69-gcr7-jv3q) and obliges the consuming project to add an explicit transitive pin to get a clean build.
+CodeBrix.Sqlite pins `SQLitePCLRaw.bundle_e_sqlite3` to 3.0.5 — deliberately, not incidentally — so referencing this package resolves a graph on the current 3.x native bundle that `dotnet list package --vulnerable --include-transitive` reports as clean.
 
-CodeBrix.Sqlite pins `SQLitePCLRaw.bundle_e_sqlite3` to 3.0.3 on your behalf — deliberately, not incidentally — so referencing this package resolves a graph that `dotnet list package --vulnerable --include-transitive` reports as clean, with no pin and no explanatory comment needed in your own project file.
+That pin began as a vulnerability fix: `Microsoft.Data.Sqlite` through 10.0.10 resolved `SQLitePCLRaw.lib.e_sqlite3` 2.1.11, which carries a high-severity advisory (NU1903 / GHSA-2m69-gcr7-jv3q), and a consuming project had to add its own transitive pin to get a clean build. As of `Microsoft.Data.Sqlite` 10.0.11 the transitive pin is 2.1.12, which is not flagged, so a direct reference is clean on its own today — but the pin here keeps the native bundle current rather than trailing the 2.x line.
 
 ## Sample Code
 
@@ -143,6 +165,21 @@ public class VaultRow
 var row = database.Connection.QuerySingle<VaultRow>("SELECT * FROM [Vault] WHERE [Label] = 'api-key';");
 ```
 
+## Documentation
+
+The NuGet package includes `AGENT-README.txt`, a complete API reference and usage guide written for AI coding agents - point your agent at that file when it is writing code against this library.
+
+Additional sample code and usage examples are available in the `CodeBrix.Sqlite.Tests` project:
+https://github.com/ellisnet/CodeBrix.Sqlite/tree/main/tests/CodeBrix.Sqlite.Tests
+
 ## License
 
 The project is licensed under the Apache 2.0 License. see: https://en.wikipedia.org/wiki/Apache_License
+
+CodeBrix.Sqlite incorporates source code and designs derived from three open source projects, all licensed under the Apache License 2.0 - the same license as this project:
+
+* `Portable.Data.Sqlite` (Ellisnet - Jeremy Ellis) - the ancestor of the `EncryptedTable<T>` subsystem
+* `SimpleAdo` / `SimpleAdo.Sqlite` (Ellisnet - Jeremy Ellis)
+* `Dapper` (tag 2.1.79) - the API surface the Dapper-style mapper is modeled on
+
+The full attributions are in `THIRD-PARTY-NOTICES.txt`, which ships inside the NuGet package.
