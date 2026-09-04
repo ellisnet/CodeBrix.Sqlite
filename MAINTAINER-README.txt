@@ -53,9 +53,15 @@ REPOSITORY LAYOUT
       folders) and SampleItems.cs (the shared EncryptedTableItem fixtures and
       test doubles: SpySerializer, PlainTextCryptEngine)
 
+    global.json
+      selects the Microsoft.Testing.Platform test runner. It does NOT pin an
+      SDK version. See TESTING below.
+
     CodeBrix.Sqlite.slnx
-      the solution; its Solution Items folder carries AGENT-README.txt,
-      icon-codebrix-128.png, LICENSE, README.md and THIRD-PARTY-NOTICES.txt
+      the solution; its Solution Items folder carries .gitignore,
+      AGENT-README.txt, EXTRAS-README.txt, global.json, icon-codebrix-128.png,
+      LICENSE, MAINTAINER-README.txt, README-INDEX.txt, README.md and
+      THIRD-PARTY-NOTICES.txt, and its Tests folder carries the test project
 
 Sub-folder names are namespace segments here (CodeBrix.Sqlite.Cryptography,
 .EncryptedTables, .Extensions, .Enumerations, .Exceptions); the entry-point
@@ -79,20 +85,40 @@ SQLitePCLRaw.bundle_e_sqlite3 in addition to Microsoft.Data.Sqlite. That is
 deliberate and must not be "simplified away".
 
 Durable rule: keep an explicit reference to a 3.x SQLitePCLRaw bundle. The
-2.1.x bundle that Microsoft.Data.Sqlite would otherwise pull in transitively
-ships a lib.e_sqlite3 with a known high-severity advisory (NU1903 /
-GHSA-2m69-gcr7-jv3q); the patched native library ships in the 3.x bundles.
-With the explicit reference in place, a consuming project needs no pin of its
-own and `dotnet list package --vulnerable --include-transitive` reports the
-SQLite graph clean. When bumping Microsoft.Data.Sqlite, re-check that the
-bundle reference still wins the version resolution and stays on 3.x - and
-never write the specific pinned version into AGENT-README.txt; the csproj is
-the single source of truth for it.
+reference began as a vulnerability fix - Microsoft.Data.Sqlite through 10.0.10
+pinned bundle_e_sqlite3 2.1.11, whose lib.e_sqlite3 has a known high-severity
+advisory (NU1903 / GHSA-2m69-gcr7-jv3q). As of Microsoft.Data.Sqlite 10.0.11
+the transitive pin is 2.1.12, which is NOT flagged, so this reference no longer
+avoids an advisory; it keeps the graph on the current 3.x bundle. Re-check
+before removing it. With the explicit reference in place, a consuming project
+needs no pin of its own and
+`dotnet list package --vulnerable --include-transitive` reports the SQLite
+graph clean. When bumping Microsoft.Data.Sqlite, re-check that the bundle
+reference still wins the version resolution and stays on 3.x - and never write
+the specific pinned version into AGENT-README.txt or README.md; the csproj
+comment above the reference is the single source of truth for the rationale.
 
 
 TESTING
 =======
     dotnet test CodeBrix.Sqlite.slnx
+
+global.json at the repository root is load-bearing for testing. It has no
+"sdk" section and pins no SDK version - runner selection is the only thing it
+is there for:
+
+    { "test": { "runner": "Microsoft.Testing.Platform" } }
+
+The test project runs on Microsoft.Testing.Platform (xunit.v3), which no longer
+supports the legacy VSTest bridge on the .NET 10 SDK. Do NOT delete global.json
+- without it "dotnet test" fails outright with "Testing with VSTest target is
+no longer supported by Microsoft.Testing.Platform on .NET 10 SDK and later".
+Because the setting lives in global.json rather than in a csproj, it applies to
+every "dotnet test" run anywhere in the repository, including CI. Keep the file
+committed and keep it in the .slnx Solution Items folder.
+
+There is no code-coverage collector in the test project; coverlet.collector is
+not referenced.
 
 tests/CodeBrix.Sqlite.Tests/ is an xUnit v3 project using SilverAssertions
 fluent assertions. It also references

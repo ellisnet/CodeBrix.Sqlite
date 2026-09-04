@@ -30,8 +30,8 @@ XML documentation (IntelliSense) ships alongside the assembly.
 * Safe backup orchestration: quiesce (maintenance mode) → WAL checkpoint → SQLite online backup → resume, plus a one-statement `VACUUM INTO` snapshot path
 * Database maintenance mode, blocking normal operations while backups or schema changes run
 * `user_version` schema-version helpers for managing database DDL upgrades over time
-* Dapper-style CRUD extension methods on `SqliteConnection` — `Query<T>()`, `QueryFirst/Single(OrDefault)()`, `Execute()`, `ExecuteScalar<T>()`, `ExecuteReader()`, `QueryMultiple()` and their async forms, with anonymous-object parameters and IN-list expansion (API modeled on Dapper 2.1.79) — that are encryption-aware: `EncryptedTableItem` results decrypt automatically, `[EncryptedColumn]` POCO properties decrypt on read, and `EncryptedValue`-wrapped parameters encrypt on bind
-* Column binding that is case-insensitive **and underscore-tolerant**, so a `snake_case` schema maps onto PascalCase properties (`customer_tier` → `CustomerTier`) with no aliases, attributes or configuration — and, unlike stock Dapper, with no `MatchNamesWithUnderscores` switch to remember
+* Dapper-style CRUD extension methods on `SqliteConnection` — `Query<T>()`, `QueryFirst/Single(OrDefault)()`, `Execute()`, `ExecuteScalar<T>()`, `ExecuteReader()`, `QueryMultiple()` and their async forms, with anonymous-object parameters and IN-list expansion — that are encryption-aware: `EncryptedTableItem` results decrypt automatically, `[EncryptedColumn]` POCO properties decrypt on read, and `EncryptedValue`-wrapped parameters encrypt on bind
+* Column binding that is case-insensitive **and underscore-tolerant**, so a `snake_case` schema maps onto PascalCase properties (`customer_tier` → `CustomerTier`) with no aliases, attributes or configuration to remember
 * A SQLite dependency graph with no known security advisories — see below
 
 ## Every feature is optional — including encryption
@@ -49,9 +49,7 @@ Two further limits worth knowing before you design around it:
 
 ## A clean SQLite dependency graph
 
-CodeBrix.Sqlite pins `SQLitePCLRaw.bundle_e_sqlite3` to 3.0.5 — deliberately, not incidentally — so referencing this package resolves a graph on the current 3.x native bundle that `dotnet list package --vulnerable --include-transitive` reports as clean.
-
-That pin began as a vulnerability fix: `Microsoft.Data.Sqlite` through 10.0.10 resolved `SQLitePCLRaw.lib.e_sqlite3` 2.1.11, which carries a high-severity advisory (NU1903 / GHSA-2m69-gcr7-jv3q), and a consuming project had to add its own transitive pin to get a clean build. As of `Microsoft.Data.Sqlite` 10.0.11 the transitive pin is 2.1.12, which is not flagged, so a direct reference is clean on its own today — but the pin here keeps the native bundle current rather than trailing the 2.x line.
+CodeBrix.Sqlite pins the current 3.x `SQLitePCLRaw` native bundle — deliberately, not incidentally — rather than accepting whichever bundle `Microsoft.Data.Sqlite` would bring in transitively. Referencing this package therefore resolves a SQLite dependency graph that `dotnet list package --vulnerable --include-transitive` reports as clean, and your project needs no transitive pin of its own.
 
 ## Sample Code
 
@@ -144,7 +142,7 @@ using (var contacts = new EncryptedTable<Contact>(database))
 ### Dapper-style queries that understand encryption
 
 ```csharp
-using CodeBrix.Sqlite; // instead of 'using Dapper;'
+using CodeBrix.Sqlite; // the mapper extension methods live in this namespace
 
 // The connection of a SqliteDatabase knows its crypt engine ambiently:
 var contacts = database.Connection
@@ -174,12 +172,8 @@ https://github.com/ellisnet/CodeBrix.Sqlite/tree/main/tests/CodeBrix.Sqlite.Test
 
 ## License
 
-The project is licensed under the Apache 2.0 License. see: https://en.wikipedia.org/wiki/Apache_License
+CodeBrix.Sqlite is licensed under the Apache License 2.0 - see the
+[LICENSE](https://github.com/ellisnet/CodeBrix.Sqlite/blob/main/LICENSE) file.
 
-CodeBrix.Sqlite incorporates source code and designs derived from three open source projects, all licensed under the Apache License 2.0 - the same license as this project:
-
-* `Portable.Data.Sqlite` (Ellisnet - Jeremy Ellis) - the ancestor of the `EncryptedTable<T>` subsystem
-* `SimpleAdo` / `SimpleAdo.Sqlite` (Ellisnet - Jeremy Ellis)
-* `Dapper` (tag 2.1.79) - the API surface the Dapper-style mapper is modeled on
-
-The full attributions are in `THIRD-PARTY-NOTICES.txt`, which ships inside the NuGet package.
+For licensing and provenance information about the open source code included in
+this package, see [THIRD-PARTY-NOTICES.txt](https://github.com/ellisnet/CodeBrix.Sqlite/blob/main/THIRD-PARTY-NOTICES.txt).

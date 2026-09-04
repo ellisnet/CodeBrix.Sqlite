@@ -29,5 +29,7 @@ GENERAL
       Human-facing overview shown on GitHub and nuget.org.
   README-INDEX.txt
       This file.
+  THIRD-PARTY-NOTICES.txt
+      What came from where, and under which licences.
 
 ================================================================================

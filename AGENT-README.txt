@@ -26,8 +26,8 @@ The library is the modern successor to two earlier open-source projects by
 the same author: Portable.Data.Sqlite (origin of EncryptedTable<T>) and
 SimpleAdo.Sqlite (origin of the encrypted-column API and the
 maintenance-mode/backup concepts). The Dapper-style mapper is modeled on the
-Dapper 2.1.79 API surface. See THIRD-PARTY-NOTICES.txt in the package for the
-full provenance record.
+Dapper API surface. See THIRD-PARTY-NOTICES.txt in the package for the full
+provenance record.
 
 
 INSTALLATION
@@ -51,15 +51,17 @@ itself ships inside the SQLitePCLRaw bundle, so the package works on Windows,
 Linux and macOS with nothing installed on the machine.
 
 DEPENDENCY NOTE (a durable rule, not a version to copy): the library pins the
-SQLitePCLRaw bundle EXPLICITLY to a 3.x bundle rather than accepting the 2.1.x
-bundle that Microsoft.Data.Sqlite would otherwise bring in transitively. The
-2.1.x native library carries a high-severity advisory (NU1903 /
-GHSA-2m69-gcr7-jv3q) and the patched native library ships in the 3.x bundles.
-The practical consequence for you: referencing CodeBrix.Sqlite gives a SQLite
-dependency graph that `dotnet list package --vulnerable --include-transitive`
-reports clean, and your project needs no pin of its own. Do not add a
-downgrade pin of SQLitePCLRaw to "align" versions - that reintroduces the
-advisory.
+SQLitePCLRaw bundle EXPLICITLY to the current 3.x native bundle rather than
+accepting whichever bundle Microsoft.Data.Sqlite would otherwise bring in
+transitively. The practical consequence for you: referencing CodeBrix.Sqlite
+gives a SQLite dependency graph that
+`dotnet list package --vulnerable --include-transitive` reports clean, and your
+project needs no pin of its own. Do not add a downgrade pin of SQLitePCLRaw to
+"align" versions - the rule is to keep the graph on the current 3.x bundle. One
+release in the older 2.1.x line did carry a high-severity advisory (NU1903 /
+GHSA-2m69-gcr7-jv3q), but the bundle Microsoft.Data.Sqlite resolves on its own
+is no longer flagged, so a downgrade is a currency problem rather than an
+advisory one.
 
 
 KEY NAMESPACES / USINGS
@@ -527,8 +529,8 @@ get does not corrupt the table's cached index.
 DAPPER-STYLE CRUD (SqliteMapper)
 ================================
 Extension methods on SqliteConnection, declared in the CodeBrix.Sqlite
-namespace and modeled on the Dapper 2.1.79 API surface ("using
-CodeBrix.Sqlite;" instead of "using Dapper;"). Because they extend
+namespace and modeled on the Dapper API surface ("using CodeBrix.Sqlite;"
+instead of "using Dapper;"). Because they extend
 SqliteConnection, call them through the Connection property of
 SqliteDatabase: database.Connection.Query<T>(sql, param).
 
