@@ -53,14 +53,14 @@
     <Product>CodeBrix.Sqlite</Product>
     <Title>CodeBrix.Sqlite</Title>
     <Authors>Jeremy Ellis</Authors>
-    <Description>A SQLite convenience library layered on Microsoft.Data.Sqlite, providing selective column/object encryption with a pluggable crypt engine (AES-GCM engine included), the typed EncryptedTable&lt;T&gt; abstraction with searchable encrypted data and HMAC blind-index equality search, safe quiesce-and-backup orchestration, and database schema-version helpers. Highlights: encrypt individual values or whole CLR objects at rest, search them without full-table decryption, and back up live databases safely.</Description>
+    <Description>A convenience library for working with SQLite databases, adding encryption on top of the ordinary SQLite access you already use. Encrypt individual values or whole objects at rest, and even search encrypted data without having to decrypt everything first. Also includes safe live-database backup and simple schema-version tracking.</Description>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/ellisnet/CodeBrix.Sqlite</PackageProjectUrl>
     <RepositoryUrl>https://github.com/ellisnet/CodeBrix.Sqlite</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageIcon>icon-codebrix-128.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <Copyright>Copyright 2014-2018 Ellisnet - Jeremy Ellis. Copyright (c) 2026 Jeremy Ellis and contributors.</Copyright>
+    <Copyright>Copyright (c) 2026 Jeremy Ellis and contributors</Copyright>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
     <IsPackable>true</IsPackable>
