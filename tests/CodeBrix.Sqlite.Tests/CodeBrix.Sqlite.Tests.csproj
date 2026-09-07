@@ -12,8 +12,8 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="xunit.v3" Version="4.0.0" />
-    <PackageReference Include="SilverAssertions.ApacheLicenseForever" Version="1.0.237.1200" />
-    <PackageReference Include="CodeBrix.Compression.MitLicenseForever" Version="1.0.238.89" />
+    <PackageReference Include="SilverAssertions.ApacheLicenseForever" Version="1.0.248.1071" />
+    <PackageReference Include="CodeBrix.Compression.MitLicenseForever" Version="1.0.248.1109" />
   </ItemGroup>
 
   <ItemGroup>
