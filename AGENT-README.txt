@@ -64,6 +64,37 @@ is no longer flagged, so a downgrade is a currency problem rather than an
 advisory one.
 
 
+ANDROID AND TRIMMING
+====================
+Android ARM64 and x64 native SQLite assets come through the bundled dependency.
+Place database files in app-private writable storage, not beside the assemblies.
+
+JsonObjectSerializer explicitly installs a reflection metadata resolver when no
+resolver was supplied. It works without enabling the application-wide JSON
+reflection default, and copies caller options before configuring them. Changing
+the options template after constructing the serializer no longer changes that
+serializer. A supplied resolver is honored without a reflection fallback.
+
+For full trimming, preserve the constructors and serialized members of every
+application model (including nested types), or pass generated metadata:
+
+    var serializer = new JsonObjectSerializer(new JsonSerializerOptions
+    {
+        TypeInfoResolver = AppJsonContext.Default,
+        IncludeFields = true
+    });
+
+AppJsonContext must cover all runtime types used by Serialize(object), all
+Deserialize<T> targets, and their nested graphs. Configure matching source-
+generation options if fields are used. Pass this serializer to AesGcmCryptEngine
+when using encrypted objects; setting SqliteDatabaseOptions.Serializer alone
+does not change a crypt engine's serializer.
+
+The mapper and EncryptedTable<T> also inspect model properties by reflection;
+a generated JSON context does not remove those separate preservation requirements.
+Use partial trimming if those model paths have not been validated. Full trimming
+and NativeAOT are different: this change is not a NativeAOT support claim.
+
 KEY NAMESPACES / USINGS
 =======================
     using CodeBrix.Sqlite;                  // SqliteDatabase,

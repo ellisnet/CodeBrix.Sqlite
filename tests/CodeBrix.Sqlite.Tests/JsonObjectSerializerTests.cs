@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using CodeBrix.Sqlite.Cryptography;
 using SilverAssertions;
 using Xunit;
@@ -60,6 +63,61 @@ public class JsonObjectSerializerTests
     }
 
     [Fact]
+    public void Serialize_honors_generated_metadata_and_frozen_options()
+    {
+        //Arrange
+        var options = new JsonSerializerOptions
+        {
+            IncludeFields = true,
+            TypeInfoResolver = SerializerTestContext.Default
+        };
+        options.MakeReadOnly();
+        var serializer = new JsonObjectSerializer(options);
+        var original = new FieldHolder { NameField = "generated", NumberField = 23 };
+
+        //Act
+        var result = serializer.Deserialize<FieldHolder>(serializer.Serialize(original));
+
+        //Assert
+        result.NameField.Should().Be("generated");
+        result.NumberField.Should().Be(23);
+        options.TypeInfoResolver.Should().BeSameAs(SerializerTestContext.Default);
+    }
+
+    [Fact]
+    public void Serialize_honors_explicit_resolver_without_reflection_fallback()
+    {
+        //Arrange
+        var serializer = new JsonObjectSerializer(new JsonSerializerOptions
+        {
+            TypeInfoResolver = JsonTypeInfoResolver.Combine()
+        });
+
+        //Act
+        Action action = () => serializer.Serialize(new FieldHolder());
+
+        //Assert
+        action.Should().Throw<NotSupportedException>();
+    }
+
+    [Fact]
+    public void Serialize_copies_options_before_configuring_its_resolver()
+    {
+        //Arrange
+        var options = new JsonSerializerOptions { IncludeFields = true };
+        var serializer = new JsonObjectSerializer(options);
+
+        //Act
+        var result = serializer.Deserialize<FieldHolder>(serializer.Serialize(
+            new FieldHolder { NameField = "copy", NumberField = 7 }));
+
+        //Assert
+        result.NameField.Should().Be("copy");
+        options.TypeInfoResolver.Should().BeNull();
+        options.IsReadOnly.Should().BeFalse();
+    }
+
+    [Fact]
     public void Serialize_throws_on_null_value()
     {
         //Arrange
@@ -79,3 +137,7 @@ public class JsonObjectSerializerTests
         act.Should().Throw<ArgumentNullException>();
     }
 }
+
+[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Metadata, IncludeFields = true)]
+[JsonSerializable(typeof(JsonObjectSerializerTests.FieldHolder))]
+internal partial class SerializerTestContext : JsonSerializerContext;
