@@ -56,6 +56,8 @@ CodeBrix.Sqlite pins the current 3.x `SQLitePCLRaw` native bundle — deliberate
 ### The plain case: no encryption at all
 
 ```csharp
+using System.Collections.Generic;
+using System.Linq;
 using CodeBrix.Sqlite;
 
 using var db = new SqliteDatabase("app.db");
@@ -114,6 +116,7 @@ database.BackupToFile("/backups/mydatabase-backup.sqlite");
 ### A typed encrypted table with blind-index search
 
 ```csharp
+using System.Collections.Generic;
 using CodeBrix.Sqlite;
 using CodeBrix.Sqlite.Cryptography;
 using CodeBrix.Sqlite.EncryptedTables;

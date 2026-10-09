@@ -72,7 +72,7 @@ Place database files in app-private writable storage, not beside the assemblies.
 JsonObjectSerializer explicitly installs a reflection metadata resolver when no
 resolver was supplied. It works without enabling the application-wide JSON
 reflection default, and copies caller options before configuring them. Changing
-the options template after constructing the serializer no longer changes that
+the options template after constructing the serializer does not change that
 serializer. A supplied resolver is honored without a reflection fallback.
 
 For full trimming, preserve the constructors and serialized members of every
@@ -93,7 +93,7 @@ does not change a crypt engine's serializer.
 The mapper and EncryptedTable<T> also inspect model properties by reflection;
 a generated JSON context does not remove those separate preservation requirements.
 Use partial trimming if those model paths have not been validated. Full trimming
-and NativeAOT are different: this change is not a NativeAOT support claim.
+and NativeAOT are different: nothing here is a NativeAOT support claim.
 
 KEY NAMESPACES / USINGS
 =======================
@@ -642,7 +642,7 @@ resolves from the optional cryptEngine argument, or ambiently from the
 SqliteDatabase that owns the connection; mapper calls on a database in
 maintenance mode throw DatabaseMaintenanceException. POCO materialization
 needs a public parameterless constructor; multi-mapping (Query<T1,T2,...>) and
-DynamicParameters are not included in this first iteration.
+DynamicParameters are not included.
 
 Supporting types (namespace CodeBrix.Sqlite):
     public sealed class EncryptedValue
@@ -806,6 +806,10 @@ Example 3: Dapper-style CRUD, including a multi-result batch
 
     using var db = new SqliteDatabase("app.db");
     db.SafeOpen();
+
+    db.Connection.Execute(
+        "CREATE TABLE IF NOT EXISTS tickets (id INTEGER PRIMARY KEY, " +
+        "title TEXT, customer_tier TEXT, has_mitigation INTEGER);");
 
     db.Connection.Execute(
         "INSERT INTO tickets (title, customer_tier, has_mitigation) " +
@@ -1071,7 +1075,7 @@ Do NOT reach for this library for:
     no relationships and no migrations engine (schema versioning is just
     user_version read/write).
   - Multi-mapping (Query<T1, T2, ...>) or Dapper's DynamicParameters - not
-    included in this first iteration of the mapper.
+    included in the mapper.
   - Database engines other than SQLite, or SQLite through a provider other
     than Microsoft.Data.Sqlite.
   - Cross-process coordination. Maintenance mode gates operations issued
